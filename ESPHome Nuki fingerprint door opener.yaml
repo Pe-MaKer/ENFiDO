@@ -1,0 +1,129 @@
+esphome:
+  name: haustuer
+  #platform: ESP32
+  #board: wemos_d1_mini32
+  libraries:
+  - Preferences
+  - https://github.com/vinmenn/Crc16.git
+  - https://github.com/uriyacovy/NukiBleEsp32
+
+external_components:
+  #- source: github://uriyacovy/ESPHome_nuki_lock
+  - source: github://Pe-MaKer/ESPHome_nuki_lock@dev
+
+esp32:
+  board: "wemos_d1_mini32"  # Or whatever other board you're using
+  framework:
+    type: arduino
+    version: 2.0.4
+    platform_version: 5.3.0
+  
+wifi:
+  networks:
+
+  - ssid: !secret wifi_ssid
+    password: !secret wifi_password
+  - ssid: !secret wifi_fallback_ssid
+    password: !secret wifi_fallback_password
+  # Optional manual IP
+  manual_ip:
+    static_ip: 10.0.2.3
+    gateway: 10.0.0.1
+    subnet: 255.0.0.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Tuer Fallback Hotspot"
+    password: "v"
+
+captive_portal:
+
+#bluetooth_proxy:
+#  active: true
+
+logger:
+
+api:
+
+ota:
+  password: !secret ota_password
+
+
+web_server:
+  port: 80
+  include_internal: true
+
+#esp32_ble_tracker:
+#  scan_parameters:
+#    duration: 10s
+
+button:
+  - platform: template
+    name: "Türöffner"
+    id: alohomora
+    icon: "mdi:door-open"
+    on_press:
+      - if:
+          condition: 
+            lock.is_locked: nuki
+          then:
+            - lock.unlock: nuki
+            - delay: 5s
+            - switch.turn_on: oeffner
+            - delay: 2000ms
+            - switch.turn_off: oeffner
+
+          else:
+            - switch.turn_on: oeffner
+            - delay: 2000ms
+            - switch.turn_off: oeffner
+  - platform: template
+    name: "Durchgangslicht"
+    id: durchgangslicht
+    icon: "mdi:wall-sconce-flat"
+    on_press:
+      - output.turn_on: licht
+      - delay: 120000ms
+      - output.turn_off: licht
+
+  - platform: restart
+    name: "Restart haustuer"
+  
+switch:
+  - platform: gpio
+    id: oeffner
+    pin: 16
+    restore_mode: ALWAYS_OFF
+    name: "Schnapper"
+    icon: "mdi:gate"
+
+output:
+  - platform: gpio
+    id: licht
+    pin: 17    
+
+    
+light:
+  - platform: binary
+    name: "Licht"
+    output: licht
+
+
+lock:
+  # Required:
+  - platform: nuki_lock
+    name: Nuki ESP
+    id: nuki
+    is_connected: 
+      name: "Nuki ESP verbunden"
+    is_paired: 
+      name: "Nuki ESP gekoppelt"      
+  # Optional:
+    battery_critical:
+      name: "Nuki ESP Batterie kritisch"
+    battery_level:
+      name: "Nuki ESP Batteriestand"
+    door_sensor:
+      name: "Nuki ESP Türsensor"
+    door_sensor_state:
+      name: "Nuki ESP Türkontakt Zustand"
